@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/sim_tests.dir/test_simulator.cpp.o CMakeFiles/sim_tests.dir/__/src/core/circuit.cpp.o CMakeFiles/sim_tests.dir/__/src/sim/simulator.cpp.o -o sim_tests 

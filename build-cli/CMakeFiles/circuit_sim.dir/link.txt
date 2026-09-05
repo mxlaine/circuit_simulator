@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/circuit_sim.dir/src/core/circuit.cpp.o CMakeFiles/circuit_sim.dir/src/io/netlist_parser.cpp.o CMakeFiles/circuit_sim.dir/src/sim/simulator.cpp.o CMakeFiles/circuit_sim.dir/src/main.cpp.o -o circuit_sim 
