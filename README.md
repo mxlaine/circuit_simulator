@@ -1,4 +1,4 @@
-# Circuit Simulator 1
+# Circuit Simulator
 
 A C++17 circuit simulator implementing Modified Nodal Analysis (MNA) for DC operating-point and AC small-signal analysis, with a Qt-based circuit editor and SPICE-like netlist support.
 
