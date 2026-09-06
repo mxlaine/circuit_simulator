@@ -242,13 +242,22 @@ void MainWindow::onRunSimulation() {
 
   // Parse and simulate
   NetlistParser parser;
-  std::unique_ptr<Circuit> circuit =
-      parser.ParseNetlist(tmpFile.fileName().toStdString());
-  Simulator sim(circuit.get());
-  if (simulationType == SimulationType::AC) {
-    sim.SolveAC(acFrequency);
-  } else {
-    sim.SolveDC();
+  std::unique_ptr<Circuit> circuit;
+  try {
+    circuit = parser.ParseNetlist(tmpFile.fileName().toStdString());
+    Simulator sim(circuit.get());
+    if (simulationType == SimulationType::AC) {
+      sim.SolveAC(acFrequency);
+    } else {
+      sim.SolveDC();
+    }
+  } catch (const std::exception& error) {
+    gridWidget->setNodeVoltages({});
+    gridWidget->setComplexNodeVoltages({});
+    gridWidget->setComponentCurrents({});
+    gridWidget->setComponentComplexCurrents({});
+    QMessageBox::warning(this, tr("Simulation failed"), QString::fromUtf8(error.what()));
+    return;
   }
 
   // Collect node voltages

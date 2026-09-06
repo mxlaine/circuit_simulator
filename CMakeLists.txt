@@ -1,93 +1,41 @@
-cmake_minimum_required(VERSION 3.11)
-project(circuit-simulator-1)
+cmake_minimum_required(VERSION 3.16)
+project(circuit_simulator LANGUAGES CXX)
 
-enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_BUILD_TYPE Debug)
-
-# Enable testing globally so add_test() in subdirs works
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 include(CTest)
-enable_testing()
 
-message(STATUS "BUILD directory is ${CMAKE_BINARY_DIR}")
-message(STATUS "SRC directory is ${CMAKE_SOURCE_DIR}")
-
-# SOURCE AND HEADER FILES
-file(GLOB_RECURSE SOURCES_HPP 
-    "${CMAKE_SOURCE_DIR}/src/core/*.hpp"
-    "${CMAKE_SOURCE_DIR}/src/sim/*.hpp"
-    "${CMAKE_SOURCE_DIR}/src/io/*.hpp"
-    "${CMAKE_SOURCE_DIR}/src/gui/*.hpp"
-    "${CMAKE_SOURCE_DIR}/src/*.hpp"
+add_library(circuit_sim_core
+    src/core/circuit.cpp
+    src/sim/simulator.cpp
+    src/io/netlist_parser.cpp
 )
-
-file(GLOB_RECURSE SOURCES_H 
-    "${CMAKE_SOURCE_DIR}/src/core/*.h"
-    "${CMAKE_SOURCE_DIR}/src/sim/*.h"
-    "${CMAKE_SOURCE_DIR}/src/io/*.h"
-    "${CMAKE_SOURCE_DIR}/src/gui/*.h"
+target_include_directories(circuit_sim_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sim
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs
 )
-
-file(GLOB_RECURSE SOURCES_CPP 
-    "${CMAKE_SOURCE_DIR}/src/core/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sim/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/io/*.cpp"
-)
-
-# Add top-level sources explicitly to avoid unintentionally pulling GUI sources via recursive globs
-set(TOPLEVEL_SOURCES
-    "${CMAKE_SOURCE_DIR}/src/main.cpp"
-)
-
-file(GLOB_RECURSE SOURCES_HPP 
-    "${CMAKE_SOURCE_DIR}/src/core/*.hpp"
-    "${CMAKE_SOURCE_DIR}/src/sim/*.hpp"
-    "${CMAKE_SOURCE_DIR}/src/io/*.hpp"
-    "${CMAKE_SOURCE_DIR}/src/*.hpp"
-)
-
-file(GLOB_RECURSE SOURCES_C 
-    "${CMAKE_SOURCE_DIR}/src/core/*.c"
-    "${CMAKE_SOURCE_DIR}/src/sim/*.c"
-    "${CMAKE_SOURCE_DIR}/src/io/*.c"
-)
-
-file(GLOB_RECURSE SOURCES_H 
-    "${CMAKE_SOURCE_DIR}/src/core/*.h"
-    "${CMAKE_SOURCE_DIR}/src/sim/*.h"
-    "${CMAKE_SOURCE_DIR}/src/io/*.h"
-)
-
-set(SOURCES ${SOURCES_C} ${SOURCES_CPP} ${SOURCES_H} ${SOURCES_HPP} ${TOPLEVEL_SOURCES})
-
-message(STATUS "SRC directories source code files: 
-\t-- HEADERS: ${SOURCES_H} ${SOURCES_HPP}
-\t-- C SOURCES: ${SOURCES_C}
-\t-- CPP SOURCES: ${SOURCES_CPP}
-\t-- ALL: ${SOURCES}")
-
-# --- Main executable ---
-add_executable(circuit_sim)
-target_sources(circuit_sim PUBLIC ${SOURCES})
-
-target_include_directories(circuit_sim PUBLIC 
-    ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/sim
-    ${CMAKE_SOURCE_DIR}/src/io
-    ${CMAKE_SOURCE_DIR}/libs
-)
-
 if(MSVC)
-    target_compile_options(circuit_sim PRIVATE /Wall)
+    target_compile_options(circuit_sim_core PRIVATE /W4)
 else()
-    target_compile_options(circuit_sim PRIVATE -Wall -Wextra -pedantic -Wno-missing-field-initializers)
+    target_compile_options(circuit_sim_core PRIVATE -Wall -Wextra -pedantic)
 endif()
 
-# --- GUI (Qt) subproject ---
-option(BUILD_GUI "Build Qt GUI from src/gui" ON)
+add_executable(circuit_sim src/main.cpp)
+target_link_libraries(circuit_sim PRIVATE circuit_sim_core)
+
+option(BUILD_GUI "Build Qt GUI" ON)
 if(BUILD_GUI)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/src/gui ${CMAKE_BINARY_DIR}/gui)
+    add_subdirectory(src/gui gui)
+endif()
+if(BUILD_TESTING)
+    add_subdirectory(tests)
 endif()
 
-# --- Add test suite ---
-add_subdirectory(tests)
+add_executable(butterworth_demo examples/butterworth.cpp)
+target_link_libraries(butterworth_demo PRIVATE circuit_sim_core)
+if(BUILD_TESTING)
+    add_test(NAME butterworth_validation COMMAND butterworth_demo ${CMAKE_CURRENT_BINARY_DIR}/butterworth.csv)
+endif()

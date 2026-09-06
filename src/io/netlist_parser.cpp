@@ -12,17 +12,21 @@ std::unique_ptr<Circuit> NetlistParser::ParseNetlist(
   }
 
   std::string line;
-  bool AC;
+  bool AC = false;
+  bool hasCommand = false;
   while (std::getline(file, line)) {
-    if (line.empty() || line[0] == '#') continue;
+    const auto first = line.find_first_not_of(" \t\r");
+    if (first == std::string::npos || line[first] == '#') continue;
     std::stringstream iss(line);
     std::string command;
     iss >> command;
 
     if (command == ".DC") {
+      hasCommand = true;
       AC = false;
       break;
     } else if (command == ".AC") {
+      hasCommand = true;
       AC = true;
       double freq;
       if (!(iss >> freq)) {
@@ -35,8 +39,11 @@ std::unique_ptr<Circuit> NetlistParser::ParseNetlist(
     }
   }
 
+  if (!hasCommand) throw std::runtime_error("Netlist must begin with simulation command");
+
   while (std::getline(file, line)) {
-    if (line.empty() || line[0] == '#') continue;
+    const auto first = line.find_first_not_of(" \t\r");
+    if (first == std::string::npos || line[first] == '#') continue;
 
     std::istringstream iss(line);
     std::string name;
@@ -78,11 +85,10 @@ std::unique_ptr<Circuit> NetlistParser::ParseNetlist(
           ParseOpAmp(iss, name, *circuit);
           break;
         default:
-          std::cerr << "Unsupported component: " << name << std::endl;
+          throw std::runtime_error("Unsupported component: " + name);
       }
     } catch (const std::exception& e) {
-      std::cerr << "Error parsing line: " << line << ": " << e.what()
-                << std::endl;
+      throw std::runtime_error("Error parsing line: " + line + ": " + e.what());
     }
   }
   return circuit;

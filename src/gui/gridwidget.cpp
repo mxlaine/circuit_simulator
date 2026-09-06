@@ -1,3 +1,4 @@
+#include "engineering_format.hpp"
 #include "gridwidget.hpp"
 
 #include <qcustomplot.h>
@@ -282,11 +283,11 @@ void GridWidget::paintEvent(QPaintEvent *event) {
       painter.save();
       QString valueStr;
       if (component.type == "VCVS" || component.type == "CCCS") {
-        valueStr = component.parameters.value("Gain").toString();
+        valueStr = parameterDisplay("Gain", component.parameters.value("Gain"));
       } else if (component.type == "VCCS") {
-        valueStr = component.parameters.value("Transconductance").toString();
+        valueStr = parameterDisplay("Transconductance", component.parameters.value("Transconductance"));
       } else if (component.type == "CCVS") {
-        valueStr = component.parameters.value("Transresistance").toString();
+        valueStr = parameterDisplay("Transresistance", component.parameters.value("Transresistance"));
       }
 
       QRect boxRect(boxLeftX, boxTopY, boxRightX - boxLeftX,
@@ -407,7 +408,7 @@ void GridWidget::paintEvent(QPaintEvent *event) {
         component.type != "Op-Amp") {
       for (auto it = component.parameters.constBegin();
            it != component.parameters.constEnd(); ++it) {
-        paramsString += it.value().toString() + " ";
+        paramsString += parameterDisplay(it.key(), it.value()) + " ";
       }
       if (!paramsString.isEmpty()) {
         paramsString.chop(1);
@@ -571,9 +572,9 @@ void GridWidget::mouseMoveEvent(QMouseEvent *event) {
           double v_rms = std::abs(v);
           double v_phase = std::arg(v);
           QToolTip::showText(QCursor::pos(),
-                             QString("V = %1 V (RMS), arg: %2 rad")
-                                 .arg(v_rms, 0, 'f', 3)
-                                 .arg(v_phase, 0, 'f', 2),
+                             QString("V = %1 RMS, phase: %2°")
+                                 .arg(engineeringValue(v_rms, "V"))
+                                 .arg(v_phase * 180.0 / std::acos(-1.0), 0, 'f', 1),
                              this);
         } else {
           double v = nodeVoltages.value(gp);
@@ -605,12 +606,12 @@ void GridWidget::mouseMoveEvent(QMouseEvent *event) {
             double v_phase = std::arg(v);
             QString tooltip =
                 QString(
-                    "I = %1 A (RMS), arg: %2 rad\nΔV = %3 V (RMS), arg: %4 rad"
+                    "I = %1 RMS, phase: %2°\nΔV = %3 RMS, phase: %4°"
                     "\nRight-click to open plot")
-                    .arg(i_rms, 0, 'f', 6)
-                    .arg(i_phase, 0, 'f', 2)
-                    .arg(v_rms, 0, 'f', 3)
-                    .arg(v_phase, 0, 'f', 2);
+                    .arg(engineeringValue(i_rms, "A"))
+                    .arg(i_phase * 180.0 / std::acos(-1.0), 0, 'f', 1)
+                    .arg(engineeringValue(v_rms, "V"))
+                    .arg(v_phase * 180.0 / std::acos(-1.0), 0, 'f', 1);
             QToolTip::showText(QCursor::pos(), tooltip, this);
 
           } else {

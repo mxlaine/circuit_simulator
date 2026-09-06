@@ -29,9 +29,6 @@ set(PROJECT_SOURCES
         plotdialog.hpp
         ${CMAKE_SOURCE_DIR}/libs/qcustomplot.cpp
         ${CMAKE_SOURCE_DIR}/libs/qcustomplot.h
-        ../io/netlist_parser.cpp
-        ../sim/simulator.cpp
-        ../core/circuit.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -46,7 +43,7 @@ else()
     )
 endif()
 
-target_link_libraries(circuit_sim_gui PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(circuit_sim_gui PRIVATE circuit_sim_core Qt${QT_VERSION_MAJOR}::Widgets)
 
 target_include_directories(circuit_sim_gui PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core

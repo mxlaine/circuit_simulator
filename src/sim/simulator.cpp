@@ -633,8 +633,9 @@ void Simulator::CheckCircuitTopology(bool isAC = false) {
                 << std::endl;
     }
   }
-  if (!circuit_->HasGND())
-    std::runtime_error("Circuit has no ground reference. Add a GND node.");
+  if (!circuit_->HasGND()) {
+    throw std::runtime_error("Circuit has no ground reference. Add a GND node.");
+  }
 
   Eigen::MatrixXd G;
   FillGCMatrix(G, resistors);
