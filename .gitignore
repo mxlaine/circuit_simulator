@@ -50,7 +50,8 @@ Mkfile.old
 dkms.conf
 
 # Build directory
-build
+/build/
+/build-*/
 
 # Netlists and HTML documentation
 netlists
