@@ -1,6 +1,6 @@
 # Circuit Simulator 1
 
-A simple circuit simulator project. Simulates basic electronic circuits and components, allowing users to experiment and visualize circuit behavior.
+A C++17 circuit simulator implementing Modified Nodal Analysis (MNA) for DC operating-point and AC small-signal analysis, with a Qt-based circuit editor and SPICE-like netlist support.
 
 # Features
 
