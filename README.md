@@ -2,28 +2,18 @@
 
 [![C++ CI](https://github.com/mxlaine/circuit_simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/mxlaine/circuit_simulator/actions/workflows/ci.yml)
 
-A C++17 circuit simulator implementing Modified Nodal Analysis (MNA) for DC operating-point and AC small-signal analysis, with a Qt-based circuit editor and SPICE-like netlist support.
+A C++17 circuit simulator with a Qt editor. It solves DC operating points and
+single-frequency AC responses using Modified Nodal Analysis (MNA) and Eigen.
 
 ![Circuit editor displaying the Butterworth demo](docs/images/simulator.png)
 
-## Features
+The circuit model supports resistors, capacitors, inductors, independent
+voltage/current sources, all four dependent-source types, and ideal op-amps.
+The editor displays node voltages and component currents, and can save and load
+a subset of the Falstad circuit format.
 
-- DC operating-point and AC steady-state phasor analysis.
-- Resistors, capacitors, inductors, independent voltage/current sources,
-  all four dependent-source types, and ideal op-amps.
-- Qt circuit editor with Falstad-format import/export and SPICE-like netlist parsing.
-- Engineering-unit component labels and AC result tooltips with phase in degrees.
-- Sinusoidal voltage/current plots reconstructed from AC phasors. Transient
-  simulation is not implemented.
-- Catch2 validation against analytical DC/AC results, including voltage dividers,
-  RC/RL filters, LC resonance, dependent sources and op-amps.
-
-## How it works
-
-The simulator stamps component equations into a Modified Nodal Analysis system
-and solves it with Eigen. DC uses real-valued conductances; AC uses complex
-admittances at the selected frequency. The shared `circuit_sim_core` library is
-used by the CLI, Qt GUI, numerical demo and tests.
+AC plots reconstruct steady-state sinusoids from complex phasors. There is no
+transient solver, nonlinear device model, or op-amp saturation model.
 
 ## Butterworth filter demo
 
@@ -57,53 +47,25 @@ python scripts/plot_butterworth.py  # requires matplotlib
 The magnitude sweep is a standalone example; the GUI plots sinusoidal waveforms
 at a single selected frequency.
 
-## Installation instructions
+## Build and run
 
-Clone this repo:
-
-```bash
-git clone https://github.com/mxlaine/circuit_simulator.git
-cd circuit_simulator
-```
-
-The following commands are for Ubuntu/Debian Linux. You need a C++17 compiler,
-CMake 3.16 or newer, and Qt development libraries. Eigen, Catch2, and QCustomPlot
-are included in `libs/`.
-
-Install the compiler, build tools, Git, and Qt 5:
+On Ubuntu/Debian, install a C++17 compiler, CMake 3.16+, and Qt 5:
 
 ```bash
 sudo apt update
 sudo apt install build-essential cmake git qtbase5-dev
-```
-
-## Building and usage
-
-Run these commands from the project root, where `CMakeLists.txt` is located.
-CMake creates the build directory automatically; the commands also work when
-rebuilding an existing checkout.
-
-```bash
+git clone https://github.com/mxlaine/circuit_simulator.git
+cd circuit_simulator
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel 2
-```
-
-Launch the GUI from the project root:
-
-```bash
 ./build/gui/circuit_sim_gui
 ```
 
-The GUI requires a graphical desktop session (or WSL with working GUI support).
+Eigen, Catch2, and QCustomPlot are bundled in `libs/`. Launch the GUI from the
+repository root so the saved circuits are easy to find. A desktop session is
+required.
 
-Run the command-line examples and the test suite from the project root:
-
-```bash
-./build/circuit_sim
-cmake -E chdir build ctest --output-on-failure
-```
-
-For a command-line-only build, Qt is not required. Use a separate build directory (again, running from project root):
+For a build without Qt:
 
 ```bash
 cmake -S . -B build-cli -DBUILD_GUI=OFF -DCMAKE_BUILD_TYPE=Release
@@ -112,21 +74,45 @@ cmake --build build-cli --parallel 2
 cmake -E chdir build-cli ctest --output-on-failure
 ```
 
-After building the software, these executables are available:
+`circuit_sim` runs the hard-coded examples in [src/main.cpp](src/main.cpp);
+it does not accept a netlist filename. To run tests in the GUI build, use
+`cmake -E chdir build ctest --output-on-failure`.
 
-| Executable | Location | Description |
-| :--- | :--- | :--- |
-| circuit_sim | build/ | Simulates pre-built circuits and prints results to the standard output stream. |
-| circuit_sim_gui | build/gui/ | The graphical user interface for building and displaying circuits. |
-| sim_tests | build/tests/ | Unit tests, also run by CTest. |
-| butterworth_demo | build/ | Writes a validated filter frequency sweep to a CSV file. |
+## Implementation and tests
 
-## Validation
+The shared `circuit_sim_core` library contains the circuit model, netlist parser,
+and solver. DC and AC assemble dense real and complex matrices respectively,
+then solve them with Eigen's column-pivoted Householder QR. This is suited to the
+small example circuits here; large-circuit performance has not been benchmarked.
+See the [source guide](src/readme.md) for the main entry points.
 
-[The CI workflow](.github/workflows/ci.yml) builds the CLI and tests in Release
-with both GCC and Clang on Ubuntu for pushes and pull requests. Build the Qt GUI locally with the default configuration. Set `-DBUILD_TESTING=OFF` to omit the test suite.
+[Catch2 tests](tests/) compare voltages and currents with analytical results for
+DC dividers, RC/RL filters, LC resonance, dependent sources, and ideal op-amps.
+CTest also runs the Butterworth sweep above. [CI](.github/workflows/ci.yml)
+builds and tests the core and CLI with GCC and Clang in Release mode; it does not
+build the Qt GUI.
 
-The parser expects `.DC` or `.AC <frequency_hz>` first, numeric node names with
-`0` as ground, and component values in SI base units. Blank lines and `#` comments
-are accepted. Missing files, malformed records and unsupported components report
-errors instead of silently producing a partial circuit.
+## File formats and limitations
+
+The [netlist parser](src/io/netlist_parser.cpp) accepts a small SPICE-like syntax:
+`.DC` or `.AC <frequency_hz>` first, numeric node names with `0` as ground, and
+values in SI base units. For example, a DC divider is:
+
+```text
+.DC
+V1 1 0 10
+R1 1 2 1000
+R2 2 0 1000
+```
+
+Blank lines and `#` comments are accepted. This format is separate from the
+editor's Falstad import/export; neither provides full SPICE or Falstad compatibility.
+
+Missing ground and empty networks are rejected. The topology check can warn
+about singular circuits, but it does not validate the rank or residual of the
+full solved DC/AC system. Results for floating or contradictory circuits should
+not be treated as valid merely because the solver returns numbers.
+
+DC netlist parsing replaces inductors with short circuits. Direct callers of
+`Circuit::AddInductor` do not get that conversion; the DC solver does not stamp
+those inductors. Use the AC solver for the RLC examples built through that API.

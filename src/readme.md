@@ -1,89 +1,39 @@
-# Core (`src/core/`)
+# Source guide
 
-## Circuit Representation
-- **node.hpp**: Electrical node representation. Holds DC voltages and AC phasor values.
-- **component.hpp**: Abstract base class for all components. Defines terminal nodes, values, and current tracking.
-- **circuit.hpp / circuit.cpp**: Container for the entire circuit. Manages nodes, components, and ground.
+The core library is shared by the Qt application, command-line examples, and tests.
 
-## Passive Components
-- **resistor.hpp**: Resistor (conductance for MNA).
-- **capacitor.hpp**: Capacitor (AC impedance handling).
-- **inductor.hpp**: Inductor (AC impedance handling).
+| Location | Responsibility |
+| --- | --- |
+| [core/circuit.cpp](core/circuit.cpp) and [core/circuit.hpp](core/circuit.hpp) | Component storage, node discovery, and circuit construction |
+| [core/](core/) | Nodes and component types, including dependent sources and ideal op-amps |
+| [sim/simulator.cpp](sim/simulator.cpp) | DC/AC matrix assembly, solving, and current calculation |
+| [io/netlist_parser.cpp](io/netlist_parser.cpp) | Parse the project's SPICE-like text format into a circuit |
+| [main.cpp](main.cpp) | Hard-coded command-line examples |
+| [gui/mainwindow.cpp](gui/mainwindow.cpp) | File operations and simulation controls |
+| [gui/gridwidget.cpp](gui/gridwidget.cpp) | Circuit editing, Falstad import/export, and result tooltips |
+| [gui/plotdialog.cpp](gui/plotdialog.cpp) | Reconstruct sinusoidal waveforms from AC results using QCustomPlot |
 
-## Sources
-- **voltage_source.hpp**: Independent voltage source.
-- **current_source.hpp**: Independent current source.
-- **short_circuit.hpp**: Zero-voltage source for current sensing.
+## Solver
 
-## Dependent Sources
-- **vcvs.hpp**: Voltage-controlled voltage source.
-- **vccs.hpp**: Voltage-controlled current source.
-- **ccvs.hpp**: Current-controlled voltage source.
-- **cccs.hpp**: Current-controlled current source.
+Start with `Simulator::FillAMatrix` for DC stamping and `Simulator::SolveAC`
+for the complex-valued equivalent. The unknowns are non-ground node voltages
+and additional branch currents needed for voltage sources and constraints.
+Resistors contribute conductance; in AC, capacitors and inductors contribute
+`jωC` and `1/(jωL)`.
 
-## Active Components
-- **opamp.hpp**: Ideal operational amplifier (V+ = V− constraint).
+For resistors and independent voltage sources, the MNA matrix has the familiar
+`[G B; Bᵀ 0]` structure. Dependent sources and ideal op-amps add stamps that do
+not generally preserve that symmetry. Both solvers use dense Eigen matrices
+and column-pivoted Householder QR.
 
-## Simulator
-**simulator.hpp / simulator.cpp**
-- Implements Modified Nodal Analysis
-- DC operating-point analysis
-- AC phasor-domain analysis
-- Matrix assembly and topology validation
+The parser converts DC inductors to short circuits before solving. This
+conversion is not performed by the direct circuit-construction API.
+`CheckCircuitTopology` is a preliminary check, not a complete validation of
+the assembled system; see the [limitations](../README.md#file-formats-and-limitations).
 
-## Netlist Parsing
-- **netlist_parser.hpp / netlist_parser.cpp**: SPICE-like netlist parser. Produces `Circuit` objects and simulation directives.
+## Following an example
 
-
-# GUI (`src/gui/`)
-
-## Application
-- **main.cpp**: Qt entry point.
-- **mainwindow.hpp / mainwindow.cpp**: Main window, file operations, simulation controls.
-
-## Circuit Editor
-- **gridwidget.hpp / gridwidget.cpp**
-  - Interactive canvas
-  - Component placement with grid snapping
-  - Selection, movement, panning, zooming
-  - Rendering for all components
-  - Tooltips for simulation results
-  - Import/export of Falstad circuits
-
-- **component.hpp** (GUI): GUI-side component metadata (type, position, parameters).
-
-## Dialogs
-- **componentdialog.hpp / componentdialog.cpp**: Component parameter editing.
-- **plotdialog.hpp / plotdialog.cpp**: Waveform visualization using QCustomPlot.
-
-
-# Simulation Flow
-NetlistParser → Circuit → Simulator → Results  
-GUI (GridWidget/MainWindow) → Netlist → Simulator → Tooltip/Plot Output
-
-
-# Supported Features
-- DC operating-point analysis
-- AC frequency-domain analysis (complex phasors)
-- Full component set: R, C, L, independent sources, dependent sources, op-amps
-- Qt GUI circuit editor with real-time result display
-- Netlist-based file I/O and Falstad import
-- AC waveform plotting
-- MNA matrix formulation
-
-
-# Short MNA Explanation
-The simulator constructs and solves:
-
-[ G   B ] [ v ] = [ i ]  
-[ B^T 0 ] [ j ]   [ e ]
-
-Where:
-- **G**: Conductance/admittance matrix
-- **B**: Voltage-source incidence matrix
-- **v**: Node voltages
-- **j**: Source branch currents
-- **i**: Current injections
-- **e**: Voltage source values
-
-AC analysis uses complex admittance values for R, L, and C.
+[The Butterworth demo](../examples/butterworth.cpp) constructs a circuit,
+sweeps the AC solver, and checks output magnitude against the analytical
+response. [The tests](../tests/) contain smaller examples for individual
+component types and parser errors.
