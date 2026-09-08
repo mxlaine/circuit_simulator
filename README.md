@@ -1,7 +1,5 @@
 # Circuit Simulator
 
-[![C++ CI](https://github.com/mxlaine/circuit_simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/mxlaine/circuit_simulator/actions/workflows/ci.yml)
-
 A C++17 circuit simulator with a Qt editor. It solves DC operating points and
 single-frequency AC responses using Modified Nodal Analysis (MNA) and Eigen.
 
