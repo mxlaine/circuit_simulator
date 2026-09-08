@@ -34,7 +34,7 @@ compared with `|Vout| = 0.5 / sqrt(1 + (f / 1000)^10)`.
 ![Simulated and analytical Butterworth magnitude response](docs/images/butterworth-response.png)
 
 The [demo executable](examples/butterworth.cpp) checks all 121 frequency points
-against that analytical response within 0.1 µV absolute error. It is also run
+against that analytical response. It is also run
 by CTest. Regenerate the [CSV](docs/results/butterworth.csv) and figure after building:
 
 ```bash
@@ -42,8 +42,7 @@ by CTest. Regenerate the [CSV](docs/results/butterworth.csv) and figure after bu
 python scripts/plot_butterworth.py  # requires matplotlib
 ```
 
-The magnitude sweep is a standalone example; the GUI plots sinusoidal waveforms
-at a single selected frequency.
+(The magnitude sweep is a standalone example, there is currently no functionality to perform a sweep in the simulator itself)
 
 ## Build and run
 
@@ -59,9 +58,8 @@ cmake --build build --parallel 2
 ./build/gui/circuit_sim_gui
 ```
 
-Eigen, Catch2, and QCustomPlot are bundled in `libs/`. Launch the GUI from the
-repository root so the saved circuits are easy to find. A desktop session is
-required.
+Eigen, Catch2, and QCustomPlot are included in `libs/`. Launch the GUI from the
+repository root so the saved circuits are easy to find.
 
 For a build without Qt:
 
@@ -72,27 +70,27 @@ cmake --build build-cli --parallel 2
 cmake -E chdir build-cli ctest --output-on-failure
 ```
 
-`circuit_sim` runs the hard-coded examples in [src/main.cpp](src/main.cpp);
-it does not accept a netlist filename. To run tests in the GUI build, use
+`circuit_sim` runs the hard-coded examples in [src/main.cpp](src/main.cpp),
+and does not accept a netlist filename (yet?). To run tests in the GUI build, use
 `cmake -E chdir build ctest --output-on-failure`.
 
 ## Implementation and tests
 
 The shared `circuit_sim_core` library contains the circuit model, netlist parser,
 and solver. DC and AC assemble dense real and complex matrices respectively,
-then solve them with Eigen's column-pivoted Householder QR. This is suited to the
-small example circuits here; large-circuit performance has not been benchmarked.
+then solve them with Eigen's column-pivoted Householder QR algorithm. This works well 
+for the example circuits here, but performance for large circuits hasn't been tested, so there
+may be a better solving method out there.
 See the [source guide](src/readme.md) for the main entry points.
 
 [Catch2 tests](tests/) compare voltages and currents with analytical results for
 DC dividers, RC/RL filters, LC resonance, dependent sources, and ideal op-amps.
-CTest also runs the Butterworth sweep above. [CI](.github/workflows/ci.yml)
-builds and tests the core and CLI with GCC and Clang in Release mode; it does not
-build the Qt GUI.
+CTest also runs the Butterworth sweep above.
 
 ## File formats and limitations
 
-The [netlist parser](src/io/netlist_parser.cpp) accepts a small SPICE-like syntax:
+The [netlist parser](src/io/netlist_parser.cpp) accepts a small SPICE-like syntax, 
+similar to what [Falstad](https://www.falstad.com/circuit/) uses:
 `.DC` or `.AC <frequency_hz>` first, numeric node names with `0` as ground, and
 values in SI base units. For example, a DC divider is:
 
@@ -103,8 +101,8 @@ R1 1 2 1000
 R2 2 0 1000
 ```
 
-Blank lines and `#` comments are accepted. This format is separate from the
-editor's Falstad import/export; neither provides full SPICE or Falstad compatibility.
+Blank lines and `#` comments are accepted and ignored by the simulator. This format is separate from the
+editor's Falstad import/export, as neither provides full SPICE or Falstad compatibility.
 
 Missing ground and empty networks are rejected. The topology check can warn
 about singular circuits, but it does not validate the rank or residual of the
@@ -112,5 +110,5 @@ full solved DC/AC system. Results for floating or contradictory circuits should
 not be treated as valid merely because the solver returns numbers.
 
 DC netlist parsing replaces inductors with short circuits. Direct callers of
-`Circuit::AddInductor` do not get that conversion; the DC solver does not stamp
+`Circuit::AddInductor` do not get that conversion and the DC solver does not stamp
 those inductors. Use the AC solver for the RLC examples built through that API.
